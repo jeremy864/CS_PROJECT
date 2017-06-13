@@ -1,259 +1,77 @@
 swagger: "2.0"
 info:
-  version: 1.0.0
-  title: Data Gateway
-  description: The data gateway provides a method of sending data in real time, this data will be validated and then flow through the solution to one or more target systems.  All data will be encrypted at rest while flowing through this solution. Configurations based on defined file type will determine how the data should be processed.
-  termsOfService: http://swagger.io/terms/
-  contact:
-    name: Scott Walker
-    email: scott.walker@acxiom.com
-  license:
-    name: MIT
-    url: http://github.com/gruntjs/grunt/blob/master/LICENSE-MIT
-host: datagateway.swagger.io
-basePath: /api
+  version: "2017-06-12T15:30:15Z"
+  title: "Connected Spaces Ingestion"
+  description: This data ingestion API provides a method to send data in real time to a recognised API, this data will be validated and then flow through the solution tothe connected spaces solution.  All data will be encrypted at rest while flowing through this solution. The Record Type and Version parameters will determine what payload is expected and how it should be processed.  A number of records can be sent up to the total of the max record size defined for that recordtype, usually this is between 1 and 100.
+host: "7sga2p2s3i.execute-api.eu-west-1.amazonaws.com"
+basePath: "/systest"
 schemes:
-  - http
-consumes:
-  - application/json
-produces:
-  - application/json
+- "https"
 paths:
-  /sendData/{recordType}/{version}:
+  /api/senddata:
     post:
-      description: |
-        This call is the main data ingestion route, each call will have a type of data and can be made synchronously or asynchronously.  Between 1 and 100 records can be placed in loading payload at a time to reduce latency during large data transfers.  Data will be received as a JSON payload, the process will validate against expected field types and then passed to the defined SQS queues for database or further processing.
-      operationId: sendData
+      description: This call is the main data ingestion route, each call will have a type of data and will be made synchronously.  Between 1 and 100 records can be placed in as the JSON payload at a time to reduce latency during large data transfers.  Data will be received as a JSON payload, the process will validate against expected field types and then ingest into the connected spaces solution.
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
       parameters:
-        - name: recordType
-          in: path
-          description: Record type describing the structure being sent
-          required: true
-          type: string
-          
-        - name: version
-          in: path
-          description: Version of recordtype to be used, numbered to specification starting at 1
-          required: true
-          type: integer
-          format: int64
-          
-        - name: batch
-          in: query
-          description: id of the batch that this should be logged against.
-          required: false
-          type: integer
-          format: int64
-          
-        - name: asynch
-          in: query
-          description: flag to show if the request is asynchronous.
-          required: false
-          type: boolean
-          format: boolean
-          default: false
-          
-        - name: records
-          in: body
-          description: Formatted JSON records
-          required: true
-          schema:
-            $ref: '#/definitions/testRecords'
-            
+      - name: "version"
+        in: "query"
+        required: true
+        type: "string"
+      - name: "recordtype"
+        in: "query"
+        required: true
+        type: "string"
       responses:
         200:
-          description: Data Loaded
+          description: "200 response"
           schema:
-            $ref: '#/definitions/Success'
-        400:
-          description: Bad Request - covers data validation errors, formatting errors or parameter errors.  Details of the error contained in a JSON string in the payload.
-          schema:
-            $ref: '#/definitions/Error'
-            
-  /batch:
-    get:
-      description: Begins a new Batch, returns the id of the batch process
-      operationId: startBatch
-      responses:
-        200:
-          description: Success Response
-          schema:
-            $ref: '#/definitions/Success'
-#        default:
-#          description: unexpected error
-#          schema:
-#            $ref: '#/definitions/Error'
-  /batch/{id}:
-    get:
-      description: Returns the status of the batch operation, including number of records processed and status of the batch.
-      operationId: queryBatch
-      parameters:
-        - name: id
-          in: path
-          description: Returns information relating to the batch included in the ID.
-          required: true
-          type: integer
-          format: int64
-      responses:
-        200:
-          description: pet response
-          schema:
-            $ref: '#/definitions/Success'
-        400:
-          description: Bad Request - covers data validation errors, formatting errors or parameter errors.  Details of the error contained in a JSON string in the payload.
-          schema:
-            $ref: '#/definitions/Error'
-    delete:
-      description: Closes a batch to new reocrds, depending on the id supplied.
-      operationId: closeBatch
-      parameters:
-        - name: id
-          in: path
-          description: ID of batch to close
-          required: true
-          type: integer
-          format: int64
-      responses:
-        204:
-          description: batch closed
-        400:
-          description: Bad Request - covers data validation errors, formatting errors or parameter errors.  Details of the error contained in a JSON string in the payload.
-          schema:
-            $ref: '#/definitions/Error'
-            
+            $ref: "#/definitions/Empty"
+      security:
+      - api_key: []
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: "200"
+        requestTemplates:
+          application/json: "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n\
+            ##  This template will pass through all parameters including path, querystring,\
+            \ header, stage variables, and context through to the integration endpoint\
+            \ via the body/payload\n#set($allParams = $input.params())\n{\n\"body-json\"\
+            \ : $input.json('$'),\n\"params\" : {\n#foreach($type in $allParams.keySet())\n\
+            \    #set($params = $allParams.get($type))\n\"$type\" : {\n    #foreach($paramName\
+            \ in $params.keySet())\n    \"$paramName\" : \"$util.escapeJavaScript($params.get($paramName))\"\
+            \n        #if($foreach.hasNext),#end\n    #end\n}\n    #if($foreach.hasNext),#end\n\
+            #end\n},\n\"stage-variables\" : {\n#foreach($key in $stageVariables.keySet())\n\
+            \"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n   \
+            \ #if($foreach.hasNext),#end\n#end\n},\n\"context\" : {\n    \"account-id\"\
+            \ : \"$context.identity.accountId\",\n    \"api-id\" : \"$context.apiId\"\
+            ,\n    \"api-key\" : \"$context.identity.apiKey\",\n    \"authorizer-principal-id\"\
+            \ : \"$context.authorizer.principalId\",\n    \"caller\" : \"$context.identity.caller\"\
+            ,\n    \"cognito-authentication-provider\" : \"$context.identity.cognitoAuthenticationProvider\"\
+            ,\n    \"cognito-authentication-type\" : \"$context.identity.cognitoAuthenticationType\"\
+            ,\n    \"cognito-identity-id\" : \"$context.identity.cognitoIdentityId\"\
+            ,\n    \"cognito-identity-pool-id\" : \"$context.identity.cognitoIdentityPoolId\"\
+            ,\n    \"http-method\" : \"$context.httpMethod\",\n    \"stage\" : \"\
+            $context.stage\",\n    \"source-ip\" : \"$context.identity.sourceIp\"\
+            ,\n    \"user\" : \"$context.identity.user\",\n    \"user-agent\" : \"\
+            $context.identity.userAgent\",\n    \"user-arn\" : \"$context.identity.userArn\"\
+            ,\n    \"request-id\" : \"$context.requestId\",\n    \"resource-id\" :\
+            \ \"$context.resourceId\",\n    \"resource-path\" : \"$context.resourcePath\"\
+            \n    }\n}\n"
+        uri: "arn:aws:apigateway:eu-west-1:lambda:path/2015-03-31/functions/arn:aws:lambda:eu-west-1:089533539046:function:lhr-hex-receipt/invocations"
+        passthroughBehavior: "when_no_templates"
+        httpMethod: "POST"
+        contentHandling: "CONVERT_TO_TEXT"
+        type: "aws"
+securityDefinitions:
+  api_key:
+    type: "apiKey"
+    name: "x-api-key"
+    in: "header"
 definitions:
-  Record:
-    type: object
-    discriminator: recordType
-    properties:
-      sourceRef: 
-        type: string
-      recordType:
-        type: string
-        default: testRecord
-        enum:
-          - testRecord
-    required:
-      - sourceRef
-      - recordType
-  
-  testRecord:
-    description: A Simple Test Call to the API
-    allOf:
-      - $ref: '#/definitions/Record'
-      - type: object
-        properties:
-          email:
-            type: string
-            description: Email Address
-          lastOrderDate:
-            type: string
-            description: Date of last order (ISO 8601 Timestamp)
-          title:
-            type: string
-            description: Title of User
-          forename:
-            type: string
-            description: Forename of User
-          surname:
-            type: string
-            description: User Surname
-          homePhone:
-            type: string
-            description: User Home phone with international code
-          mobilePhone:
-            type: string
-          address:
-            type: string
-          postcode:
-            type: string
-          country:
-            type: string
-          userStatus:
-            type: string
-          optIn:
-            type: boolean
-          marketingExpiryDate:
-            type: string
-          preferredEmail:
-            type: string
-          customerId:
-            type: string
-        required:
-          - email
-          - optIn
-            
-  
-  testRecords:
-    description: Array of Test Records
-    type: array
-    items:
-      - $ref: '#/definitions/testRecord'
-    
-  Records:
-    type: array
-    items:
-      - $ref: '#/definitions/Record'
-          
-  Error:
-    required:
-      - statusCode
-      - records
-    properties:
-      statusCode:
-        type: integer
-        format: int32
-      records:
-        type: array
-        items: 
-          - $ref: '#/definitions/ErrorDetail'
-        
-  ErrorDetail:
-    properties:
-      count:
-        type: integer
-        format: int32
-      failed:
-        type: integer
-        format: int32
-      errors:
-        type: array
-        items: 
-          - $ref: '#/definitions/ErrorRecord'
-    required:
-      - count
-      - failed
-        
-  ErrorRecord:
-    properties:
-      sourceRef:
-        type: string
-      internalRef:
-        type: string
-      errorDetail:
-        type: string
-    required:
-      - sourceRef
-      - internalRef
-      - errorDetail
-    
-  Success:
-    required:
-      - statusCode
-      - records
-    properties:
-      statusCode:
-        type: integer
-        format: int32
-      records:
-        type: array
-        items: 
-          - $ref: '#/definitions/SuccessDetail'
-          
-  SuccessDetail:
-    properties:
-      count:
-        type: integer
-        format: int32
-    required:
-      - count
+  Empty:
+    type: "object"
+    title: "Empty Schema"
